@@ -5,10 +5,15 @@ import "./ERC721Enumerable.sol";
 import "./Ownable.sol";
 
 contract NFT is ERC721Enumerable, Ownable {
+    using Strings for uint256;
+
     uint256 public cost;
     uint256 public maxSupply;
     uint256 public allowMintingOn;
     string public baseURI;
+    string public baseExtension = ".json";
+
+    event Mint(uint256 amount, address minter);
 
     constructor(
         string memory _name, 
@@ -24,4 +29,68 @@ contract NFT is ERC721Enumerable, Ownable {
             baseURI = _baseURI;
 
     }
+
+    function mint(uint256 _mintAmount) public payable {
+        //only Allow minting after certain time
+        require(block.timestamp >= allowMintingOn);
+
+        //must mint as least one nft
+        require(_mintAmount > 0);
+
+        //require enough payment
+        require(msg.value >= cost * _mintAmount);
+
+        //create a token
+        uint256 supply = totalSupply();
+
+        //do not let them mint more than available
+        require(supply + _mintAmount <= maxSupply);
+
+        for(uint256 i= 1; i <= _mintAmount; i++){
+            _safeMint(msg.sender, supply + i);
+        }
+
+        //emit event
+        emit Mint(_mintAmount, msg.sender);
+    }
+
+    //return metadata ipfs url
+    function tokenURI(uint256 _tokenId) 
+        public 
+        view 
+        virtual 
+        override 
+        returns(string memory)
+    {
+        require(_exists(_tokenId), 'token does not exist');
+        return(string(abi.encodePacked(baseURI, _tokenId.toString(), baseExtension))); 
+            
+    }
+
+    function walletOfOwner(address _owner) public view returns(uint256[] memory){
+        uint256 ownerTokenCount = balanceOf(_owner);
+        uint256[] memory tokenIds = new uint256[](ownerTokenCount);
+
+        for(uint256 i; i < ownerTokenCount; i++){
+            tokenIds[i] = tokenOfOwnerByIndex(_owner, i);
+        }
+
+        return tokenIds;
+    }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
